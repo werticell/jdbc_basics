@@ -1,0 +1,112 @@
+image: ubuntu
+
+stages:
+  - build
+  - test
+  - analytics
+
+before_script:
+  - apt update
+  - apt install maven -y
+
+cache:
+  paths:
+    - .m2/repository/
+    - target/data/
+    - target/homework-jdbc-basics-1.0-SNAPSHOT.jar
+
+build:
+  stage: build
+  tags:
+    - docker-atp
+  script:
+    - mvn clean package
+  artifacts:
+    paths:
+      - target/homework-jdbc-basics-1.0-SNAPSHOT.jar
+    expire_in: 1 hour
+  after_script:
+    - ECHO "BUILD PASSED"
+
+
+test:
+  stage: test
+  tags:
+    - docker-atp
+  script:
+    - mvn test
+    - echo "TESTS PASSED"
+
+
+downloading_data:
+  stage: analytics
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar downloadDbFiles
+  after_script:
+    - echo "Downloading and caching Db data is Done"
+
+
+b1_analytics:
+  stage: analytics
+  needs: [downloading_data]
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar analyseCitiesSeveralAirports
+  artifacts:
+    paths:
+      - ./CitiesSeveralAirports.xlsx
+    expire_in: 1 hour
+
+
+b2_analytics:
+  stage: analytics
+  needs: [b1_analytics]
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar analyseCancellationsByCity
+  artifacts:
+    paths:
+      - ./CancellationByCity.xlsx
+    expire_in: 1 hour
+
+b3_analytics:
+  stage: analytics
+  needs: [b2_analytics]
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar analyseShortestRouteByCity
+  artifacts:
+    paths:
+      - ./ShortestRouteByCity.xlsx
+    expire_in: 1 hour
+
+b4_analytics:
+  stage: analytics
+  needs: [b3_analytics]
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar analyseCancellationsByMonth
+  artifacts:
+    paths:
+      - ./CancellationByMonth.xlsx
+    expire_in: 1 hour
+
+
+b5_analytics:
+  stage: analytics
+  needs: [b4_analytics]
+  tags:
+    - docker-atp
+  script:
+    - java -jar target/homework-jdbc-basics-1.0-SNAPSHOT.jar analyseMoscowFlights
+  artifacts:
+    paths:
+      - ./FlightsToMoscowByWeekDay.xlsx
+      - ./FlightsFromMoscowByWeekDay.xlsx
+    expire_in: 1 hour
